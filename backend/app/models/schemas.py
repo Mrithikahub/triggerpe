@@ -5,8 +5,6 @@ from datetime import datetime
 from enum     import Enum
 
 
-# ── Enums ──────────────────────────────────────────────────────────────────────
-
 class Platform(str, Enum):
     zomato = "Zomato"
     swiggy = "Swiggy"
