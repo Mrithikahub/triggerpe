@@ -1,17 +1,19 @@
 import joblib
 
-# load the trained model
+# load model
 model = joblib.load("risk_model.pkl")
 
-def predict_risk(temp, rain, aqi):
-    prediction = model.predict([[temp, rain, aqi]])
-    
+def predict_risk(temp,rain,aqi,wind,traffic,flood):
+
+    prediction = model.predict([[temp,rain,aqi,wind,traffic,flood]])
+
     if prediction[0] == 1:
-        return "High Risk"
+        return "HIGH RISK"
     else:
-        return "Low Risk"
+        return "LOW RISK"
 
 
 # test example
-result = predict_risk(42, 60, 350)
-print("Prediction:", result)
+result = predict_risk(42,70,360,25,80,1)
+
+print("Risk Prediction:",result)
