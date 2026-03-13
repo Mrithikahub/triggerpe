@@ -4,7 +4,6 @@ from typing   import Optional, Literal
 from datetime import datetime
 from enum     import Enum
 
-
 class Platform(str, Enum):
     zomato = "Zomato"
     swiggy = "Swiggy"
@@ -21,9 +20,6 @@ class ClaimStatus(str, Enum):
     approved = "approved"
     rejected = "rejected"
     paid     = "paid"
-
-
-# ── Worker ──────────────────────────────────────────────────────────────────────
 
 class WorkerRegister(BaseModel):
     name:              str   = Field(..., min_length=2,  max_length=100, example="Arjun Sharma")
@@ -45,7 +41,7 @@ class WorkerRegister(BaseModel):
         return v.strip().title()
 
 
-# ── Premium ──────────────────────────────────────────────────────────────────────
+#premium 
 
 class PremiumQuoteRequest(BaseModel):
     city:              str   = Field(..., example="Mumbai")
