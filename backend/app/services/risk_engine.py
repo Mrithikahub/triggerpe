@@ -1,114 +1,51 @@
-"""
-Risk Engine  — AI Risk Scoring
-================================
-Computes a risk score (0.0 → 1.0) for a delivery partner.
+import os
+import pickle
 
-Phase 1 : Rule-based heuristics
-Phase 2 : Member 4 swaps compute_risk_score() with trained ML model
-
-Integration point for Member 4:
-    from ml_models.risk_model import predict_risk
-    return predict_risk(features)
-"""
-
-# ── City risk zones (based on historical disruption frequency) ─────────────────
-
-CITY_RISK_ZONES: dict[str, str] = {
-    # High — frequent floods, extreme heat, heavy rain, high AQI
-    "mumbai":    "high",
-    "chennai":   "high",
-    "kolkata":   "high",
-    "delhi":     "high",
-    # Medium — moderate disruption history
-    "bangalore": "medium",
-    "hyderabad": "medium",
-    "pune":      "medium",
-    "ahmedabad": "medium",
-    # Default for unknown cities
+CITY_RISK = {
+    "mumbai": "high", "chennai": "high", "delhi": "high", "kolkata": "high",
+    "bangalore": "medium", "hyderabad": "medium", "pune": "medium", "ahmedabad": "medium",
 }
 
-# Work zones historically prone to waterlogging / congestion
-HIGH_RISK_ZONES: set[str] = {
-    "bandra", "andheri", "dadar", "kurla",      # Mumbai
-    "t-nagar", "velachery", "tambaram",          # Chennai
-    "whitefield", "koramangala", "indiranagar",  # Bangalore
-    "laxmi nagar", "rohini", "dwarka",           # Delhi
+CITY_DISRUPTION_PROB = {
+    "mumbai": 0.75, "delhi": 0.70, "chennai": 0.65, "kolkata": 0.65,
+    "bangalore": 0.45, "hyderabad": 0.45, "pune": 0.40, "ahmedabad": 0.35,
 }
 
 
 def get_risk_zone(city: str) -> str:
-    return CITY_RISK_ZONES.get(city.strip().lower(), "low")
+    return CITY_RISK.get(city.strip().lower(), "low")
 
 
-def compute_risk_score(
-    city:              str,
-    platform:          str,
-    avg_daily_earning: float,
-    work_zone:         str,
-) -> float:
-    """
-    Returns risk score 0.0 – 1.0.
+def get_disruption_probability(city: str) -> float:
+    return CITY_DISRUPTION_PROB.get(city.strip().lower(), 0.25)
 
-    Factors:
-      - City disruption history
-      - Work zone flood / heat exposure
-      - Daily earning (lower = more vulnerable)
-      - Platform (Swiggy covers more outer zones)
 
-    TODO Phase 2 — replace body with:
-        from ml_models.risk_model import predict_risk
-        return predict_risk({
-            "city": city, "platform": platform,
-            "avg_daily_earning": avg_daily_earning, "work_zone": work_zone
-        })
-    """
-    score = 0.20  # everyone starts with baseline risk
+def compute_risk_score(city: str, platform: str, avg_daily_earning: float) -> float:
+    model_path = "app/ai_models/risk_model.pkl"
+    if os.path.exists(model_path):
+        with open(model_path, "rb") as f:
+            model = pickle.load(f)
+        return float(model.predict([[city, platform, avg_daily_earning]])[0])
 
-    city_lower = city.strip().lower()
-    zone_lower = work_zone.strip().lower()
-
-    # City contribution
-    if city_lower in ("mumbai", "chennai", "kolkata", "delhi"):
-        score += 0.30
-    elif city_lower in ("bangalore", "hyderabad", "pune", "ahmedabad"):
-        score += 0.15
-
-    # Work zone contribution
-    if zone_lower in HIGH_RISK_ZONES:
-        score += 0.15
-
-    # Income vulnerability — lower earners have less buffer
-    if avg_daily_earning < 400:
-        score += 0.10
-    elif avg_daily_earning < 600:
-        score += 0.05
-
-    # Platform factor (Swiggy covers more outer/flood-prone areas)
-    if platform.lower() == "swiggy":
-        score += 0.05
-
+    score = 0.20
+    c = city.strip().lower()
+    if c in ("mumbai", "chennai", "delhi", "kolkata"):      score += 0.30
+    elif c in ("bangalore", "hyderabad", "pune", "ahmedabad"): score += 0.15
+    score += get_disruption_probability(c) * 0.20
+    if avg_daily_earning < 400:   score += 0.10
+    elif avg_daily_earning < 600: score += 0.05
+    if platform.lower() == "swiggy": score += 0.05
     return round(min(score, 1.0), 2)
 
 
 def risk_label(score: float) -> str:
-    if score >= 0.65: return "High"
-    if score >= 0.35: return "Medium"
-    return "Low"
+    if score >= 0.65: return "high"
+    if score >= 0.35: return "medium"
+    return "low"
 
 
-def risk_advice(score: float, city: str) -> str:
+def compute_weekly_premium(score: float, city: str, avg_daily_earning: float) -> float:
     zone = get_risk_zone(city)
-    if zone == "high":
-        return (
-            f"{city.title()} is a high-disruption city. "
-            "Weekly coverage is strongly recommended — especially during monsoon season."
-        )
-    if zone == "medium":
-        return (
-            f"{city.title()} has moderate disruption risk. "
-            "Weekly coverage gives good income protection at a low cost."
-        )
-    return (
-        f"{city.title()} is a lower-risk zone. "
-        "Basic weekly coverage is still a good safety net."
-    )
+    surcharge = {"low": 0, "medium": 15, "high": 25}[zone]
+    premium = 30 + surcharge + (get_disruption_probability(city) * 30) + (score * 20)
+    return round(premium, 2)
