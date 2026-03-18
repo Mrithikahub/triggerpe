@@ -93,7 +93,8 @@ Premium is calculated based on:
 ![Architecture](docs/architecture.jpeg)
 
 ## Workflow Diagram
-<img width="307" height="1600" alt="image" src="https://github.com/user-attachments/assets/c3745320-f15d-4667-91d9-e58b15e66c95" />
+<img width="241" height="464" alt="image" src="https://github.com/user-attachments/assets/23aa7b93-3a5a-4f10-b6bc-153bd47e63c1" />
+
 
 ![Workflow](docs/workflow.jpeg)
 
