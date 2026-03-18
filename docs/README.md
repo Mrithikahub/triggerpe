@@ -2,7 +2,8 @@ GigShield AI — Backend
 Requirements
 
 Python 3.10 or higher
-pip
+pip  
+
 
 Setup & Run
 1. Clone the repo
