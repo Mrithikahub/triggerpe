@@ -2,7 +2,10 @@ from fastapi  import APIRouter
 from datetime import datetime
 
 from app.models.schemas          import TriggerInput
-from app.services.trigger_engine import detect_disruptions, calculate_payout, get_all_thresholds
+from app.services.trigger_engine import (
+    detect_disruptions, detect_disruptions_live,
+    fetch_live_weather, calculate_payout, get_all_thresholds
+)
 from app.services.fraud_detector import detect_fraud
 from app.services.payout_service import process_payout
 from app.utils.database          import (
@@ -12,19 +15,17 @@ from app.utils.database          import (
 router = APIRouter()
 
 
-@router.post("")
-def fire_trigger(body: TriggerInput):
-    disruptions = detect_disruptions(body.city, body.temperature, body.rainfall, body.aqi)
-
+def _process_disruptions(city: str, disruptions: list, weather_data: dict = None):
+    """Shared logic: find affected workers and auto-create claims."""
     if not disruptions:
         return {
             "triggered":  False,
-            "city":       body.city,
-            "readings":   {"temperature": body.temperature, "rainfall": body.rainfall, "aqi": body.aqi},
+            "city":       city,
+            "weather":    weather_data,
             "message":    "No disruption thresholds breached.",
         }
 
-    city_lower = body.city.strip().lower()
+    city_lower = city.strip().lower()
     active_policies = [
         p for p in get_all_policies()
         if p["status"] == "active"
@@ -45,10 +46,10 @@ def fire_trigger(body: TriggerInput):
 
             payout_amount = calculate_payout(policy["coverage_per_event"], disruption["payout_mult"])
             fraud_score, fraud_flags, status = detect_fraud(
-                worker_id=policy["worker_id"],
-                trigger_type=disruption["trigger_type"],
-                amount=payout_amount,
-                location=body.city,
+                worker_id    = policy["worker_id"],
+                trigger_type = disruption["trigger_type"],
+                amount       = payout_amount,
+                location     = city,
             )
 
             payout_receipt = process_payout(policy["worker_id"], "AUTO", payout_amount) if status == "approved" else None
@@ -61,7 +62,7 @@ def fire_trigger(body: TriggerInput):
                 "status":         status,
                 "fraud_score":    fraud_score,
                 "fraud_flags":    fraud_flags,
-                "location":       body.city,
+                "location":       city,
                 "is_auto":        True,
                 "payout_receipt": payout_receipt,
             })
@@ -79,13 +80,84 @@ def fire_trigger(body: TriggerInput):
             })
 
     return {
-        "triggered":             True,
-        "city":                  body.city,
-        "disruptions_detected":  [d["trigger_type"] for d in disruptions],
-        "workers_affected":      len(active_policies),
-        "claims_created":        len(all_claims),
-        "total_payout_inr":      round(total_payout, 2),
-        "claims":                all_claims,
+        "triggered":            True,
+        "city":                 city,
+        "weather":              weather_data,
+        "disruptions_detected": [d["trigger_type"] for d in disruptions],
+        "workers_affected":     len(active_policies),
+        "claims_created":       len(all_claims),
+        "total_payout_inr":     round(total_payout, 2),
+        "claims":               all_claims,
+    }
+
+
+# ── Manual trigger (for demo / frontend button) ───────────────────────────────
+@router.post("")
+def fire_trigger(body: TriggerInput):
+    """Manual trigger — pass temperature, rainfall, aqi directly."""
+    disruptions = detect_disruptions(body.city, body.temperature, body.rainfall, body.aqi)
+    weather_data = {
+        "temperature": body.temperature,
+        "rainfall":    body.rainfall,
+        "aqi":         body.aqi,
+        "source":      "manual",
+    }
+    return _process_disruptions(body.city, disruptions, weather_data)
+
+
+# ── Live auto-trigger using WeatherAPI ────────────────────────────────────────
+@router.post("/auto/{city}")
+def auto_trigger(city: str):
+    """
+    Fetches LIVE weather from WeatherAPI for the city,
+    detects disruptions automatically, creates claims.
+    POST /trigger/auto/Mumbai
+    """
+    disruptions, weather_data = detect_disruptions_live(city)
+
+    if weather_data is None:
+        return {
+            "triggered": False,
+            "city":      city,
+            "message":   "Live weather fetch failed. Check WEATHER_API_KEY in .env",
+        }
+
+    return _process_disruptions(city, disruptions, weather_data)
+
+
+# ── Weather check (no claims created) ────────────────────────────────────────
+@router.get("/weather/{city}")
+def get_live_weather(city: str):
+    """
+    Returns current weather + disruption status for a city.
+    No claims created. Used by frontend weather widget.
+    GET /trigger/weather/Mumbai
+    """
+    weather = fetch_live_weather(city)
+
+    if not weather:
+        return {
+            "city":    city,
+            "status":  "error",
+            "message": "Could not fetch weather. Check WEATHER_API_KEY in .env",
+            "weather": None,
+            "disrupted": False,
+            "disruptions_detected": [],
+        }
+
+    from app.services.trigger_engine import detect_disruptions
+    disruptions = detect_disruptions(
+        city        = city,
+        temperature = weather["temperature"],
+        rainfall    = weather["rainfall"],
+        aqi         = weather["aqi"],
+    )
+
+    return {
+        "city":                 city,
+        "weather":              weather,
+        "disrupted":            len(disruptions) > 0,
+        "disruptions_detected": [d["trigger_type"] for d in disruptions],
     }
 
 
