@@ -1,6 +1,8 @@
-GigShield AI
-AI-Powered Parametric Insurance for Gig Workers
-Problem Statement
+**GigShield AI**
+
+**AI-Powered Parametric Insurance for Gig Workers**
+
+**Problem Statement**
 
 India’s gig economy relies heavily on delivery workers from platforms such as Swiggy, Zomato, Zepto, and Amazon. These workers depend on daily earnings for their livelihood.
 
@@ -8,7 +10,7 @@ However, external disruptions such as heavy rainfall, extreme heat, severe pollu
 
 Currently, there is no simple and automated system that provides compensation for such disruption-based income loss.
 
-Target Users
+**Target Users**
 
 Food delivery partners (Swiggy, Zomato, Zepto)
 
@@ -16,10 +18,10 @@ Logistics and e-commerce delivery workers
 
 Urban gig workers dependent on daily earnings
 
-Example persona:
+**Example persona:**
 A delivery partner earning ₹500–₹1000 per day loses income completely during heavy rain or pollution spikes, with no backup or insurance support.
 
-Solution
+**Solution**
 
 GigShield AI is an AI-powered parametric insurance platform designed to protect gig workers from income loss.
 
