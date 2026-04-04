@@ -31,7 +31,9 @@ def init_db():
                 risk_score        REAL,
                 risk_level        TEXT,
                 risk_zone         TEXT,
-                registered_at     TEXT
+                registered_at     TEXT,
+                phone             TEXT,
+                email             TEXT
             );
             CREATE TABLE IF NOT EXISTS policies (
                 policy_id          TEXT PRIMARY KEY,
@@ -61,6 +63,17 @@ def init_db():
             );
         """)
         conn.commit()
+        # Migrate: add phone/email columns if not exists (for old DBs)
+        try:
+            conn.execute("ALTER TABLE workers ADD COLUMN phone TEXT")
+            conn.commit()
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE workers ADD COLUMN email TEXT")
+            conn.commit()
+        except Exception:
+            pass
         conn.close()
         print("✅ Database initialized successfully")
     except Exception as e:
@@ -104,10 +117,12 @@ def create_worker(data: dict) -> dict:
     wid = new_id("W")
     reg = _ts(now())
     conn = get_conn()
-    conn.execute("INSERT INTO workers VALUES (?,?,?,?,?,?,?,?,?)",
+    conn.execute(
+        "INSERT INTO workers (worker_id,name,city,platform,avg_daily_earning,risk_score,risk_level,risk_zone,registered_at,phone,email) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
         (wid, data["name"], data["city"], data["platform"],
          data["avg_daily_earning"], data["risk_score"],
-         data["risk_level"], data["risk_zone"], reg))
+         data["risk_level"], data["risk_zone"], reg,
+         data.get("phone"), data.get("email")))
     conn.commit()
     conn.close()
     return {**data, "worker_id": wid, "registered_at": reg}

@@ -1,6 +1,7 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os  # ← ADD THIS
+import os
 
 from app.routes.workers   import router as workers_router
 from app.routes.policies  import router as policies_router
@@ -8,23 +9,52 @@ from app.routes.premium   import router as premium_router
 from app.routes.triggers  import router as triggers_router
 from app.routes.claims    import router as claims_router
 from app.routes.analytics import router as analytics_router
+from app.routes.payments  import router as payments_router
+from app.routes.auth      import router as auth_router
 
-app = FastAPI(title="GigShield AI", version="2.0.0")
+# ── APScheduler: auto-trigger every hour ─────────────────────────────────────
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from app.services.auto_claim_service import run_auto_claims
 
-# 🔒 Environment-based CORS configuration
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(run_auto_claims, "interval", hours=1, id="auto_claims_hourly")
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        scheduler.start()
+        print("[Scheduler] Auto-claim scheduler started — runs every hour")
+        yield
+        scheduler.shutdown()
+        print("[Scheduler] Scheduler stopped")
+
+except ImportError:
+    print("[Scheduler] APScheduler not installed — auto-trigger disabled")
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        yield
+
+
+# ── App ───────────────────────────────────────────────────────────────────────
+app = FastAPI(
+    title="GigShield AI",
+    version="2.0.0",
+    description="AI-Powered Parametric Insurance for India's Gig Economy",
+    lifespan=lifespan,
+)
+
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
 if ENVIRONMENT == "production":
-    # Restrict in production
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["https://your-frontend-domain.com"],  # ← CHANGE THIS
+        allow_origins=["https://your-frontend-domain.com"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 else:
-    # Allow all in development
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -32,19 +62,24 @@ else:
         allow_headers=["*"],
     )
 
-# Include routers (your existing code)
 app.include_router(workers_router,   prefix="/workers",   tags=["Workers"])
 app.include_router(policies_router,  prefix="/policies",  tags=["Policies"])
 app.include_router(premium_router,   prefix="/premium",   tags=["Premium"])
 app.include_router(triggers_router,  prefix="/trigger",   tags=["Triggers"])
 app.include_router(claims_router,    prefix="/claims",    tags=["Claims"])
 app.include_router(analytics_router, prefix="/analytics", tags=["Analytics"])
+app.include_router(payments_router,  prefix="/payments",  tags=["Payments"])
+app.include_router(auth_router,      prefix="/auth",       tags=["Auth"])
+
 
 @app.get("/")
 def root():
     return {
-        "service": "GigShield AI",
-        "status": "running",
-        "environment": ENVIRONMENT,  # ← ADD THIS
-        "docs": "/docs"
+        "service":     "GigShield AI",
+        "version":     "2.0.0",
+        "status":      "running",
+        "environment": ENVIRONMENT,
+        "triggers":    5,
+        "scheduler":   "auto-claims every 1 hour",
+        "docs":        "/docs",
     }

@@ -134,25 +134,12 @@ def get_live_weather(city: str):
     GET /trigger/weather/Mumbai
     """
     weather = fetch_live_weather(city)
-
     if not weather:
         return {
-            "city":    city,
-            "status":  "error",
-            "message": "Could not fetch weather. Check WEATHER_API_KEY in .env",
-            "weather": None,
-            "disrupted": False,
-            "disruptions_detected": [],
+            "error": "WeatherAPI fetch failed. Check WEATHER_API_KEY in .env"
         }
 
-    from app.services.trigger_engine import detect_disruptions
-    disruptions = detect_disruptions(
-        city        = city,
-        temperature = weather["temperature"],
-        rainfall    = weather["rainfall"],
-        aqi         = weather["aqi"],
-    )
-
+    disruptions = detect_disruptions(city, weather["temperature"], weather["rainfall"], weather["aqi"])
     return {
         "city":                 city,
         "weather":              weather,

@@ -17,12 +17,18 @@ def register_worker(body: WorkerRegister):
         "risk_score":        score,
         "risk_level":        risk_label(score),
         "risk_zone":         get_risk_zone(body.city),
+        "phone":             getattr(body, "phone", None),
+        "email":             getattr(body, "email", None),
     })
     return {
         "worker_id":  worker["worker_id"],
         "name":       worker["name"],
+        "city":       worker["city"],
+        "platform":   worker["platform"],
+        "avg_daily_earning": worker["avg_daily_earning"],
         "risk_level": worker["risk_level"],
         "risk_score": score,
+        "phone":      worker.get("phone"),
     }
 
 
