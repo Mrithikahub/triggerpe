@@ -1,8 +1,8 @@
-# GigShield AI
+# TriggerPe
 
 ## Guidewire DEVTrails 2026 — Phase 2 Submission
 
-GigShield AI is a parametric income insurance platform built for food delivery workers in India. The platform is designed specifically for partners working with Swiggy, Zomato, Blinkit, Zepto, Amazon, and similar platforms who lose their daily earnings when external disruptions like heavy rain, extreme heat, or poor air quality make it impossible to work.
+TriggerPe is a parametric income insurance platform built for food delivery workers in India. The platform is designed specifically for partners working with Swiggy, Zomato, Blinkit, Zepto, Amazon, and similar platforms who lose their daily earnings when external disruptions like heavy rain, extreme heat, or poor air quality make it impossible to work.
 
 The core idea is simple — when a disruption happens, the worker should not have to file a claim, call anyone, or prove anything. The system detects the disruption automatically and processes the payout without any action from the worker.
 
@@ -20,7 +20,7 @@ Existing insurance products do not cover income loss from weather. They cover he
 
 ## What We Built
 
-GigShield AI monitors real-time environmental conditions for each worker's city and automatically triggers insurance payouts when predefined thresholds are breached.
+TriggerPe monitors real-time environmental conditions for each worker's city and automatically triggers insurance payouts when predefined thresholds are breached.
 
 The worker registers once, chooses a weekly plan, and is protected from that point forward. No paperwork. No claim forms. No waiting.
 
@@ -94,7 +94,7 @@ Premiums are calculated by our ML model using a Random Forest classifier trained
 
 **Automatic Claims Pipeline**
 
-When a trigger fires, the system creates a claim record, runs it through fraud detection, and if it passes, marks it as approved and queues it for payout. The entire pipeline runs without any manual action from the worker or an agent.
+When a trigger fires, the system creates a claim record, runs it through fraud detection, and if it passes, marks it as approved and queued for payout. The entire pipeline runs without any manual action from the worker or an agent.
 
 **Fraud Detection**
 
@@ -151,12 +151,6 @@ npm install
 npm run dev
 ```
 
-Open your browser at http://localhost:3000
-
-Backend API documentation is available at http://localhost:8000/docs
-
----
-
 ## API Endpoints
 
 | Method | Endpoint | Description |
@@ -180,9 +174,9 @@ Backend API documentation is available at http://localhost:8000/docs
 
 ## Live Demo
 
-Frontend: https://gigshield-ai-five.vercel.app
+Try it out: https://triggerpe-f6ss.vercel.app/
 
-Demo Video: https://youtu.be/b2SneHFQ22E
+Demo Video: https://youtu.be/Dtrrc_ADifk
 
 ---
 
