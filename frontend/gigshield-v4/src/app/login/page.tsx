@@ -228,8 +228,7 @@ export default function Login() {
           ) : (
             <div className="w-[200px] h-[240px] rounded-3xl flex flex-col items-center justify-center animate-float"
               style={{ background: 'linear-gradient(135deg, #1e3a8a, #3730a3)' }}>
-              <span className="text-7xl mb-2">🏃</span>
-              <p className="text-white/40 text-xs text-center px-4">Add delivery-man.png<br/>to public/ folder</p>
+              <span className="text-7xl mb-2">🏃‍♂️</span>
             </div>
           )}
         </div>
