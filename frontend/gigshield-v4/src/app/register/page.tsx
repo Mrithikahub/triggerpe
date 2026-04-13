@@ -78,7 +78,13 @@ export default function Register() {
     try {
       // 1. Register worker
       const worker = await api.registerWorker({ name, email, phone, city, platform, avg_daily_earning: earnings });
+      
+      // FIX: Save BOTH worker ID AND worker name to localStorage
       localStorage.setItem('triggerpe_worker_id', worker.id);
+      localStorage.setItem('triggerpe_worker_name', name);  // <-- THIS IS THE FIX
+      localStorage.setItem('triggerpe_worker_city', city);
+      localStorage.setItem('triggerpe_worker_platform', platform);
+      localStorage.setItem('triggerpe_worker_earning', earnings.toString());
       localStorage.setItem('triggerpe_just_registered', 'true');
 
       const selectedPlan = PLANS.find(p => p.id === plan)!;

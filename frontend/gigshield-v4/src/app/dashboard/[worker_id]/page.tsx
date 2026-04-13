@@ -33,13 +33,6 @@ interface PremiumData {
   live_weather?: { temperature: number; rainfall: number; aqi: number; condition: string };
 }
 
-// Demo worker for DEMO-001
-const DEMO_WORKER: WorkerData = {
-  id: 'DEMO-001', worker_id: 'DEMO-001', name: 'Demo Hero',
-  city: 'Chennai', platform: 'Swiggy', avg_daily_earning: 800,
-  risk_level: 'Medium', risk_score: 45,
-};
-
 export default function Dashboard() {
   const params = useParams() as { worker_id: string };
   const [worker, setWorker] = useState<WorkerData | null>(null);
@@ -53,39 +46,70 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const workerId = params.worker_id === 'DEMO-001' ? 'W1001' : params.worker_id;
+        const workerId = params.worker_id;
+        
+        if (!workerId || workerId === 'loading') {
+          setLoading(false);
+          return;
+        }
+        
         const [wData, pData, cData] = await Promise.all([
           api.getWorker(workerId),
           api.getPolicy(workerId),
           api.getWorkerClaims(workerId),
         ]);
-        // For DEMO-001 use demo data
-        setWorker(params.worker_id === 'DEMO-001' ? DEMO_WORKER : wData);
+        
+        setWorker(wData);
         setPolicy(pData);
         setClaims(cData);
+        
         const justRegistered = localStorage.getItem('triggerpe_just_registered');
         if (justRegistered) {
           localStorage.removeItem('triggerpe_just_registered');
-          setClaims([]);  // fresh registration — no claims yet
+          setClaims([]);
         }
-        const city = params.worker_id === 'DEMO-001' ? 'Chennai' : wData.city;
+        
+        const city = wData?.city;
         if (city) {
           const weth = await api.getWeather(city);
           setWeather(weth);
         }
+        
         try {
           const premRes = await fetch(`http://localhost:8000/premium/${workerId}`);
           if (premRes.ok) {
             const premData = await premRes.json();
             setPremiumData(premData);
           }
-        } catch {}
-      } catch {
-        setWorker(DEMO_WORKER);
+        } catch (premErr) {
+          console.log('Premium fetch failed, using defaults');
+        }
+        
+      } catch (err) {
+        console.error('Failed to fetch worker data:', err);
+        // Try to get from localStorage as fallback
+        const savedName = localStorage.getItem('triggerpe_worker_name');
+        const savedCity = localStorage.getItem('triggerpe_worker_city');
+        const savedPlatform = localStorage.getItem('triggerpe_worker_platform');
+        const savedEarning = localStorage.getItem('triggerpe_worker_earning');
+        
+        if (savedName) {
+          setWorker({
+            id: params.worker_id,
+            worker_id: params.worker_id,
+            name: savedName,
+            city: savedCity || 'Chennai',
+            platform: (savedPlatform as any) || 'Swiggy',
+            avg_daily_earning: parseInt(savedEarning || '800'),
+            risk_level: 'Medium',
+            risk_score: 45,
+          });
+        }
       } finally {
         setLoading(false);
       }
     };
+    
     fetchData();
   }, [params.worker_id]);
 
@@ -100,8 +124,20 @@ export default function Dashboard() {
     );
   }
 
-  // Use DEMO worker if still null
-  const w = worker ?? DEMO_WORKER;
+  if (!worker) {
+    return (
+      <div className="min-h-screen flex items-center justify-center pt-24" style={{ background: 'linear-gradient(135deg, #B8E3E9 0%, #B298E7 100%)' }}>
+        <div className="text-center p-8 rounded-2xl" style={{ background: 'rgba(255,255,255,0.9)' }}>
+          <p className="text-4xl mb-4">⚠️</p>
+          <h2 className="text-xl font-bold mb-2" style={{ color: '#000080' }}>Unable to load worker data</h2>
+          <p className="text-gray-500 mb-4">Please make sure you are registered properly</p>
+          <a href="/register" className="px-4 py-2 rounded-lg text-white" style={{ background: '#069494' }}>Go to Registration</a>
+        </div>
+      </div>
+    );
+  }
+
+  const w = worker;
   const p = policy ?? {
     id: 'P-DEMO', policy_id: 'P-DEMO', worker_id: w.id,
     start_date: new Date().toISOString(),
@@ -133,13 +169,13 @@ export default function Dashboard() {
         <div className="p-5 border-b border-white/10">
           <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-black text-white mb-3 shadow-lg"
             style={{ background: `linear-gradient(135deg, ${pColor}, #7c3aed)` }}>
-            {w.name.charAt(0)}
+            {w.name?.charAt(0) || 'W'}
           </div>
-          <p className="font-bold text-white text-sm truncate">{w.name}</p>
-          <p className="text-white/40 text-xs mt-0.5 truncate">{w.platform} · {w.city}</p>
+          <p className="font-bold text-white text-sm truncate">{w.name || 'Worker'}</p>
+          <p className="text-white/40 text-xs mt-0.5 truncate">{w.platform || 'Platform'} · {w.city || 'City'}</p>
         </div>
 
-        {/* Nav items — clicking them works */}
+        {/* Nav items */}
         <nav className="flex-1 p-3 pt-4 space-y-1">
           {NAV_ITEMS.map((item) => (
             <button key={item.id} onClick={() => setActiveSection(item.id)}
@@ -192,7 +228,7 @@ export default function Dashboard() {
           </div>
           <div className="relative z-10 h-full flex flex-col justify-end p-5 lg:p-7 max-w-7xl mx-auto w-full">
             <h2 className="text-2xl lg:text-3xl text-white font-black drop-shadow-lg flex items-center gap-2">
-              {w.city} Weather {isRainy && '⛈️'}{isHot && '🔥'}{isSmoky && '😷'}{!isRainy && !isHot && !isSmoky && '☀️'}
+              {w.city || 'Your City'} Weather {isRainy && '⛈️'}{isHot && '🔥'}{isSmoky && '😷'}{!isRainy && !isHot && !isSmoky && '☀️'}
             </h2>
             <p className="text-white/60 text-xs">Monitoring 24/7 · Auto-claim fires when thresholds hit</p>
           </div>
@@ -287,7 +323,7 @@ export default function Dashboard() {
                   </div>
                   <div className="space-y-3">
                     {claims.slice(0, 4).map((claim) => {
-                      const triggerIcon = claim.trigger_type.includes('RAIN') ? '🌧️' : claim.trigger_type.includes('HEAT') ? '🔥' : claim.trigger_type.includes('AQI') ? '💨' : claim.trigger_type.includes('WIND') ? '🌬️' : claim.trigger_type.includes('FLOOD') ? '🌊' : '⚡';
+                      const triggerIcon = claim.trigger_type?.includes('RAIN') ? '🌧️' : claim.trigger_type?.includes('HEAT') ? '🔥' : claim.trigger_type?.includes('AQI') ? '💨' : claim.trigger_type?.includes('WIND') ? '🌬️' : claim.trigger_type?.includes('FLOOD') ? '🌊' : '⚡';
                       return (
                         <div key={claim.id} className="p-4 flex items-center justify-between gap-4 transition-all" style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(0,0,128,0.1)', backdropFilter: 'blur(12px)', borderRadius: '1.5rem' }}>
                           <div className="flex items-center gap-3">
@@ -295,7 +331,7 @@ export default function Dashboard() {
                               {triggerIcon}
                             </div>
                             <div>
-                              <p className="font-bold text-sm" style={{ color: '#000080' }}>{claim.trigger_type.replace(/_/g, ' ')}</p>
+                              <p className="font-bold text-sm" style={{ color: '#000080' }}>{(claim.trigger_type || 'Event').replace(/_/g, ' ')}</p>
                               <p className="text-gray-400 text-xs">{new Date(claim.date).toLocaleDateString('en-IN')} · Auto-triggered</p>
                               {claim.fraud_score !== undefined && <p className="text-[10px] text-gray-400 mt-0.5">Fraud score: {(claim.fraud_score * 100).toFixed(0)}% ✓ Passed</p>}
                             </div>
@@ -307,11 +343,16 @@ export default function Dashboard() {
                               claim.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
                               claim.status === 'approved' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
                               'bg-red-500/20 text-red-400 border-red-500/30'
-                            }`}>{claim.status.toUpperCase()}</span>
+                            }`}>{(claim.status || 'pending').toUpperCase()}</span>
                           </div>
                         </div>
                       );
                     })}
+                    {claims.length === 0 && (
+                      <div className="p-8 text-center rounded-2xl" style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(0,0,128,0.1)' }}>
+                        <p className="text-gray-400">No claims yet. Weather conditions are normal.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -323,20 +364,20 @@ export default function Dashboard() {
                   <div className="flex items-center gap-4 mb-4">
                     <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-black text-white border-2 border-white/20 flex-shrink-0"
                       style={{ background: `linear-gradient(135deg, ${pColor}, #7c3aed)` }}>
-                      {w.name.charAt(0)}
+                      {w.name?.charAt(0) || 'W'}
                     </div>
                     <div>
-                      <h1 className="text-base font-black" style={{ color: '#000080' }}>{w.name}</h1>
+                      <h1 className="text-base font-black" style={{ color: '#000080' }}>{w.name || 'Worker'}</h1>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-gray-500 text-xs">{w.city}</span>
+                        <span className="text-gray-500 text-xs">{w.city || 'City'}</span>
                         <span className="text-gray-300">·</span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border" style={{ background: `${pColor}20`, color: pColor, borderColor: `${pColor}40` }}>{w.platform}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border" style={{ background: `${pColor}20`, color: pColor, borderColor: `${pColor}40` }}>{w.platform || 'Platform'}</span>
                       </div>
                     </div>
                   </div>
                   <div className="pt-3 grid grid-cols-2 gap-3 text-xs" style={{ borderTop: '1px solid rgba(0,0,128,0.1)' }}>
-                    <div><p className="text-gray-400 mb-0.5">Daily Earnings</p><p className="font-bold" style={{ color: '#000080' }}>₹{w.avg_daily_earning}</p></div>
-                    <div><p className="text-gray-400 mb-0.5">Worker ID</p><p className="font-bold text-gray-600 font-mono text-[10px] truncate">{w.worker_id}</p></div>
+                    <div><p className="text-gray-400 mb-0.5">Daily Earnings</p><p className="font-bold" style={{ color: '#000080' }}>₹{w.avg_daily_earning || 800}</p></div>
+                    <div><p className="text-gray-400 mb-0.5">Worker ID</p><p className="font-bold text-gray-600 font-mono text-[10px] truncate">{w.worker_id || w.id}</p></div>
                   </div>
                 </div>
 
@@ -439,10 +480,10 @@ export default function Dashboard() {
                     <div key={claim.id} className="p-5 flex flex-col sm:flex-row items-center justify-between gap-4 transition-all" style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(0,0,128,0.1)', backdropFilter: 'blur(12px)', borderRadius: '1.5rem' }}>
                       <div className="flex items-center gap-4 w-full sm:w-auto">
                         <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30 text-2xl flex-shrink-0">
-                          {claim.trigger_type.includes('Rain') ? '🌧️' : claim.trigger_type.includes('Heat') ? '☀️' : '⚡'}
+                          {claim.trigger_type?.includes('Rain') ? '🌧️' : claim.trigger_type?.includes('Heat') ? '☀️' : '⚡'}
                         </div>
                         <div>
-                          <h4 className="font-black" style={{ color: '#000080' }}>{claim.trigger_type} Event</h4>
+                          <h4 className="font-black" style={{ color: '#000080' }}>{claim.trigger_type || 'Event'} Event</h4>
                           <p className="text-gray-400 text-xs">{new Date(claim.date).toLocaleDateString()} · {new Date(claim.date).toLocaleTimeString()}</p>
                           {claim.is_auto && <span className="text-[10px] text-blue-400 font-bold bg-blue-500/10 px-2 py-0.5 rounded mt-1 inline-block">AUTO-TRIGGERED</span>}
                         </div>
@@ -454,7 +495,7 @@ export default function Dashboard() {
                           claim.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
                           claim.status === 'approved' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
                           'bg-red-500/20 text-red-400 border-red-500/30'
-                        }`}>{claim.status.toUpperCase()}</span>
+                        }`}>{(claim.status || 'pending').toUpperCase()}</span>
                       </div>
                     </div>
                   ))}
