@@ -59,7 +59,9 @@ def init_db():
                 location       TEXT,
                 is_auto        INTEGER,
                 payout_receipt TEXT,
-                created_at     TEXT
+                created_at     TEXT,
+                gps_lat        REAL,
+                gps_lng        REAL
             );
         """)
         conn.commit()
@@ -74,10 +76,21 @@ def init_db():
             conn.commit()
         except Exception:
             pass
+        # Migrate: add gps_lat/gps_lng to claims (Phase 3)
+        try:
+            conn.execute("ALTER TABLE claims ADD COLUMN gps_lat REAL")
+            conn.commit()
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE claims ADD COLUMN gps_lng REAL")
+            conn.commit()
+        except Exception:
+            pass
         conn.close()
-        print("✅ Database initialized successfully")
+        print("[DB] Database initialized successfully")
     except Exception as e:
-        print(f"❌ Database initialization failed: {e}")
+        print(f"[DB] Database initialization failed: {e}")
 
 def new_id(prefix: str) -> str:
     return f"{prefix}-{str(uuid.uuid4())[:6].upper()}"
@@ -109,6 +122,8 @@ def _claim(row) -> dict:
     d["fraud_flags"]    = json.loads(d["fraud_flags"] or "[]")
     d["payout_receipt"] = json.loads(d["payout_receipt"] or "null")
     d["is_auto"]        = bool(d["is_auto"])
+    d["gps_lat"]        = d.get("gps_lat")   # REAL or None
+    d["gps_lng"]        = d.get("gps_lng")   # REAL or None
     return d
 
 # ============= WORKER FUNCTIONS =============
@@ -186,15 +201,31 @@ def create_claim(data: dict) -> dict:
     cid = new_id("CLM")
     created = _ts(now())
     conn = get_conn()
-    conn.execute("INSERT INTO claims VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-        (cid, data["worker_id"], data["policy_id"],
-         data["trigger_type"], data["amount"], data["status"],
-         data["fraud_score"], json.dumps(data.get("fraud_flags", [])),
-         data["location"], int(data.get("is_auto", False)),
-         json.dumps(data.get("payout_receipt")), created))
+    conn.execute(
+        "INSERT INTO claims "
+        "(claim_id,worker_id,policy_id,trigger_type,amount,status,"
+        "fraud_score,fraud_flags,location,is_auto,payout_receipt,created_at,gps_lat,gps_lng) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (
+            cid, data["worker_id"], data["policy_id"],
+            data["trigger_type"], data["amount"], data["status"],
+            data["fraud_score"], json.dumps(data.get("fraud_flags", [])),
+            data["location"], int(data.get("is_auto", False)),
+            json.dumps(data.get("payout_receipt")), created,
+            data.get("gps_lat"), data.get("gps_lng"),
+        ),
+    )
     conn.commit()
     conn.close()
     return {**data, "claim_id": cid, "created_at": _dt(created)}
+
+def get_claim(claim_id: str) -> Optional[dict]:
+    """Get a single claim by claim_id (used by fraud audit endpoint)."""
+    conn = get_conn()
+    row  = conn.execute("SELECT * FROM claims WHERE claim_id=?", (claim_id,)).fetchone()
+    conn.close()
+    return _claim(row) if row else None
+
 
 def get_worker_claims(worker_id: str) -> list:
     """Get all claims for a worker"""

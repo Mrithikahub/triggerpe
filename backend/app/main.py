@@ -1,3 +1,10 @@
+import sys as _sys
+import os as _os
+# Fix: ensure backend/ is in sys.path when uvicorn is launched from project root
+_backend_dir = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+if _backend_dir not in _sys.path:
+    _sys.path.insert(0, _backend_dir)
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +18,7 @@ from app.routes.claims    import router as claims_router
 from app.routes.analytics import router as analytics_router
 from app.routes.payments  import router as payments_router
 from app.routes.auth      import router as auth_router
+from app.routes.fraud     import router as fraud_router
 
 # ── APScheduler: auto-trigger every hour ─────────────────────────────────────
 try:
@@ -69,7 +77,8 @@ app.include_router(triggers_router,  prefix="/trigger",   tags=["Triggers"])
 app.include_router(claims_router,    prefix="/claims",    tags=["Claims"])
 app.include_router(analytics_router, prefix="/analytics", tags=["Analytics"])
 app.include_router(payments_router,  prefix="/payments",  tags=["Payments"])
-app.include_router(auth_router,      prefix="/auth",       tags=["Auth"])
+app.include_router(auth_router,      prefix="/auth",      tags=["Auth"])
+app.include_router(fraud_router,     prefix="/fraud",     tags=["Fraud"])
 
 
 @app.get("/")

@@ -134,12 +134,17 @@ export const api = {
   },
 
   getAllWorkers: async (): Promise<WorkerData[]> => {
-    return fetchApi<WorkerData[]>(
-      `${BASE_URL}/workers/`,
-      {},
-      [{ id: 'W-1001', worker_id: 'W-1001', name: 'Rahul Sharma', city: 'Chennai', platform: 'Swiggy', avg_daily_earning: 800 }],
-      normalizeWorker,
-    );
+    const mockWorkers: WorkerData[] = [
+      { id: 'W-1001', worker_id: 'W-1001', name: 'Rahul Sharma', city: 'Chennai', platform: 'Swiggy', avg_daily_earning: 800 },
+    ];
+    try {
+      const res = await fetch(`${BASE_URL}/workers/`);
+      if (!res.ok) return mockWorkers;
+      const data = await res.json();
+      // Backend returns {"total": N, "workers": [...]} — unwrap before normalizing
+      const arr = data.workers ?? data;
+      return Array.isArray(arr) ? arr.map(normalizeWorker) : mockWorkers;
+    } catch { return mockWorkers; }
   },
 
   createPolicy: async (data: { worker_id: string; weeks: number; plan?: string }): Promise<Policy> => {

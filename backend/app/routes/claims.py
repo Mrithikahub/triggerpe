@@ -42,6 +42,8 @@ def submit_claim(body: ClaimCreate):
         "location":       body.location,
         "is_auto":        False,
         "payout_receipt": payout_receipt,
+        "gps_lat":        body.gps_lat,   # Phase 3: persist for audit trail
+        "gps_lng":        body.gps_lng,
     })
 
     return {

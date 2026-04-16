@@ -223,6 +223,7 @@ export default function Register() {
                     </div>
                     <span className="text-xs text-green-400 font-bold uppercase tracking-wider mb-1">Location Confirmed</span>
                     <h3 className="text-4xl font-black text-gradient">{city}</h3>
+                    <button onClick={() => setCity('')} className="mt-3 text-xs text-white/30 hover:text-white/60 underline transition-colors">Change city</button>
                   </div>
                 ) : (
                   <>
@@ -231,10 +232,21 @@ export default function Register() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     <button onClick={handleDetectLocation} disabled={locationLoading}
-                      className="px-7 py-3 rounded-full font-bold bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all text-sm">
+                      className="px-7 py-3 rounded-full font-bold bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all text-sm mb-4">
                       {locationLoading ? 'Detecting...' : '📍 Detect My Location'}
                     </button>
-                    {locationError && <p className="text-red-400 mt-3 text-sm">{locationError}</p>}
+                    {locationError && <p className="text-red-400 mb-3 text-sm">{locationError}</p>}
+                    <p className="text-white/30 text-xs mb-3">or select your city manually</p>
+                    <select
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="w-full glass-card bg-white/5 border border-white/20 px-4 py-3 text-white rounded-xl text-sm focus:outline-none focus:border-blue-500 transition-all"
+                    >
+                      <option value="" className="bg-gray-900">Select city...</option>
+                      {['Mumbai','Delhi','Chennai','Bangalore','Hyderabad','Kolkata','Pune','Ahmedabad','Jaipur','Surat','Lucknow','Nagpur'].map(c => (
+                        <option key={c} value={c} className="bg-gray-900">{c}</option>
+                      ))}
+                    </select>
                   </>
                 )}
               </div>
@@ -244,6 +256,7 @@ export default function Register() {
               </button>
             </div>
           )}
+
 
           {/* STEP 3: Earnings */}
           {step === 3 && (
