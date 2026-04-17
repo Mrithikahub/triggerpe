@@ -746,3 +746,4 @@ Insurance that works as fast as gig workers move.
 https://youtu.be/Nb87DibsztE
 
 **PPT** 
+https://drive.google.com/file/d/1mOCsvJmDQGDwiCA3CoctKGFr87RN5tBF/view?usp=sharing
